@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>TEST 1</title>
+    <link rel="stylesheet" type="text/css" href="css/main.css">
+</head>
+<body class="is-hidden">
+
+    <div class="container-checkers js-container-checkers">
+        <div class="checkers__wrapper">
+            <div class="checkers__start-wrapper js-start-wrapper is-active">
+                <h1>Who's the first move?</h1>
+                <button class="checkers__start-btn js-btn-first-move" data-firts-move="black">Black</button>
+                <button class="checkers__start-btn js-btn-first-move" data-firts-move="white">White</button>
+            </div>
+            <div class="checkers__counter-wrapper">
+                <div class="cell is-black">
+                    <div class="cell__inner">
+                        <div class="cell__figure js-checkers-counter-white">0</div>
+                    </div>
+                </div>
+                <div class="cell is-black">
+                    <div class="cell__inner">
+                        <div class="cell__figure is-black js-checkers-counter-black">0</div>
+                    </div>
+                </div>
+            </div>
+            <div class="checkers js-checkers"></div>
+        </div>
+        <div class="checkers__finish js-checkers-finish">Victory for </div>
+    </div>
+
+    <script src="./js/script.js"></script>
+</body>
+</html>
