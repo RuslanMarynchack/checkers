@@ -18,20 +18,21 @@ const classes = {
     hidden: "is-hidden"
 }
 
-// The size of the board is 8x8
-const boardSize = 8;
+const boardSize = 8; // The size of the board is 8x8
 const container = document.querySelector(selectors.container);
 const wrapper = container.querySelector(selectors.wrapper);
 let activeCell = null;
-let nowTurn;
+let chainTake = null;
+let currentMove;
 
 const directions = [
-    {dx: -1, dy: -1}, // Вліво вгору
-    {dx: -1, dy: 1},  // Вправо вгору
-    {dx: 1, dy: -1},  // Вліво вниз
-    {dx: 1, dy: 1}    // Вправо вниз
+    {dx: -1, dy: -1}, // Left up
+    {dx: -1, dy: 1},  // Right up
+    {dx: 1, dy: -1},  // Left down
+    {dx: 1, dy: 1}    // Right down
 ];
 
+// At the beginning of the game, we choose whose first move
 function handlerFirstMove() {
     const startWrapper = container.querySelector(selectors.startWrapper);
 
@@ -43,7 +44,7 @@ function handlerFirstMove() {
 
     btnsFirstMove.forEach((btn, _, btnsArr) => {
         btn.addEventListener('click', () => {
-            nowTurn = btn.dataset.firtsMove;
+            currentMove = btn.dataset.firtsMove;
             startWrapper.classList.remove(classes.active);
 
             startWrapper.addEventListener("transitionend", () => {
@@ -61,6 +62,7 @@ function handlerFirstMove() {
 
 handlerFirstMove();
 
+// We generate a board
 function createBoard() {
     const numbers = [1, 2, 3, 4, 5, 6, 7, 8];
     const liters = ["a", "b", "c","d", "e", "f", "g", "h"];
@@ -97,9 +99,10 @@ function createBoard() {
 
     handlerPositionFigure();
     handlerActiveCourse();
-    handlerTransitionIntoCell();
+    handlerMovesCheckers();
 }
 
+// We generate figures and add them to the board
 function handlerPositionFigure() {
     const cells = [...document.querySelectorAll(`${selectors.cell}`)];
 
@@ -130,20 +133,20 @@ function handlerPositionFigure() {
 // A function that receives active moves.
 function getAvailableMoves(list, currentElement, index, addClassActive = true) {
     const figure = currentElement.querySelector(selectors.figure);
-
+    // console.log(index)
     if (!figure) {
         return;
     }
 
     handlerIsDamka(list);
 
-    if (figure.dataset.type === nowTurn) {
+    if (figure.dataset.type === currentMove) {
         const isBlack = figure.dataset.type === "black";
         let captureAvailable = false;
 
         directions.forEach(direction => {
             if (figure.classList.contains(classes.damka)) {
-                captureAvailable = captureAvailable || getAvailableMovesDamka(list, currentElement, index, direction.dx, direction.dy, addClassActive)
+                captureAvailable = getAvailableMovesDamka(list, currentElement, index, direction.dx, direction.dy, addClassActive) || captureAvailable;
             } else {
                 const baseOffsetIndex = index + (direction.dx * boardSize + direction.dy);
                 const captureOffsetIndex = index + (2 * direction.dx * boardSize + 2 * direction.dy);
@@ -153,7 +156,7 @@ function getAvailableMoves(list, currentElement, index, addClassActive = true) {
                 if (baseOffset && baseOffset.querySelector(selectors.figure)) {
                     const baseFigure = baseOffset.querySelector(selectors.figure);
 
-                    if (baseFigure && baseFigure.dataset.type !== figure.dataset.type && captureOffset && captureOffset.classList.contains(classes.black)) {
+                    if (baseFigure && baseFigure.dataset.type !== figure.dataset.type && captureOffset) {
                         const captureFigure = captureOffset.querySelector(selectors.figure);
 
                         if (!captureFigure) {
@@ -168,14 +171,14 @@ function getAvailableMoves(list, currentElement, index, addClassActive = true) {
 
         if (!captureAvailable) {
             directions.forEach((direction, i) => {
-                if (i < 2 && isBlack || i >= 2 && !isBlack) {
-                    if (figure.classList.contains(classes.damka)) {
-                        captureAvailable = captureAvailable || getAvailableMovesDamka(list, currentElement, index, direction.dx, direction.dy, addClassActive);
-                    } else {
+                if (figure.classList.contains(classes.damka)) {
+                    captureAvailable = getAvailableMovesDamka(list, currentElement, index, direction.dx, direction.dy, addClassActive) || captureAvailable;
+                } else {
+                    if (i < 2 && isBlack || i >= 2 && !isBlack) {
                         const baseOffsetIndex = index + (direction.dx * boardSize + direction.dy);
                         const baseOffset = list[baseOffsetIndex];
 
-                        if (baseOffset && !baseOffset.querySelector(selectors.figure) && baseOffset.classList.contains(classes.black)) {
+                        if (baseOffset && !baseOffset.querySelector(selectors.figure)) {
                             addClassActive && baseOffset.classList.add(classes.active);
                         }
                     }
@@ -187,92 +190,132 @@ function getAvailableMoves(list, currentElement, index, addClassActive = true) {
     }
 }
 
+// We process moves for damka
 function getAvailableMovesDamka(list, damka, index, dx, dy, addClassActive) {
     let captureAvailable = false;
 
     for (let i=1; i<list.length; i++) {
         const baseOffsetIndex = index + (i * dx * boardSize + i * dy);
-
-        if (baseOffsetIndex < 0 || baseOffsetIndex >= list.length) {
-            break
-        }
-
         const baseOffset = list[baseOffsetIndex];
 
-        if (!baseOffset) {
+        if (baseOffsetIndex < 0 || baseOffsetIndex >= list.length || !baseOffset) {
             break
         }
 
         const baseOffsetFigure = baseOffset.querySelector(selectors.figure);
 
-        if (baseOffset && baseOffset.classList.contains(classes.black)) {
-            if (!baseOffsetFigure) {
+        if (!baseOffsetFigure) {
+            if (captureAvailable) {
                 addClassActive && baseOffset.classList.add(classes.active);
-            } else {
-                if (baseOffsetFigure.dataset.type !== nowTurn) {
-                    const captureIndex = baseOffsetIndex + (dx * boardSize + dy);
-                    const captureOffset = list[captureIndex];
+            }
+        } else {
+            if (baseOffsetFigure.dataset.type !== currentMove) {
+                const captureIndex = baseOffsetIndex + (dx * boardSize + dy);
+                const prevCaptureIndex = baseOffsetIndex + (-dx * boardSize + -dy);
+                const captureOffset = list[captureIndex];
+                const prevCaptureOffset = list[prevCaptureIndex];
 
-                    if (captureOffset && !captureOffset.querySelector(selectors.figure) && captureOffset.classList.contains(classes.black)) {
-                        captureAvailable = true;
-                        removeClasses();
-                        addClassActive && captureOffset.classList.add(classes.active);
-                        baseOffset.classList.add(classes.focus);
-                        console.log(captureOffset)
+                if (captureOffset && !captureOffset.querySelector(selectors.figure) && captureOffset.classList.contains(classes.black)) {
+                    if (damka !== prevCaptureOffset && prevCaptureOffset.querySelector(selectors.figure)) {
+                        break
                     }
+
+                    captureAvailable = true;
+                    baseOffset.classList.add(classes.focus);
                 }
             }
+        }
 
-            if (captureAvailable) break
+        if (baseOffsetFigure && baseOffsetFigure.dataset.type === currentMove) {
+            break
+        }
+    }
+
+    if (!captureAvailable) {
+        const isCapture = list.some(cell => cell?.classList.contains(classes.focus));
+
+        for (let i=1; i<list.length; i++) {
+            const baseOffsetIndex = index + (i * dx * boardSize + i * dy);
+            const baseOffset = list[baseOffsetIndex];
+
+            if (baseOffsetIndex < 0 || baseOffsetIndex >= list.length || !baseOffset) {
+                break
+            }
+
+            const baseOffsetFigure = baseOffset.querySelector(selectors.figure);
+
+            if (baseOffset && !baseOffset.querySelector(selectors.figure) && !isCapture) {
+                addClassActive && baseOffset.classList.add(classes.active);
+            }
+
+            if (baseOffsetFigure) {
+                break
+            }
         }
     }
 
     return captureAvailable
 }
 
+// The function checks whether one of the sides has the opportunity to beat (then this side can only beat the desired checker) or just make a move.
 function getAvailableStrikeMoves(list, activeCell, activeIndex) {
-    const strikeMoves = [];
+    const captureAvailableList = [];
+    const cellToCheck = chainTake ? [chainTake] : list;
 
-    list.forEach((cell, index) => {
+    cellToCheck.forEach((cell, index) => {
+        if (!cell) {
+            return
+        }
+
         const cellFigure = cell.querySelector(selectors.figure);
+        const cellIndex = +cell.dataset.index;
 
         if (cellFigure) {
-            const captureAvailable = getAvailableMoves(list, cell, index, false);
+            const availableTypeMoves = getAvailableMoves(list, cell, cellIndex, false);
 
-            if (captureAvailable) {
-                strikeMoves.push(cell);
+            if (availableTypeMoves) {
+                captureAvailableList.push(cell);
             }
         }
     });
 
-    if (strikeMoves.length > 0) {
-        strikeMoves.forEach(cell => {
-            if (activeCell === cell) getAvailableMoves(list, cell, activeIndex);
+    if (captureAvailableList.length > 0) {
+        captureAvailableList.forEach(cell => {
+            if (cell === activeCell) getAvailableMoves(list, cell, activeIndex);
         });
     } else {
-        getAvailableMoves(list, activeCell, activeIndex);
+        getAvailableMoves(list, activeCell, activeIndex)
     }
 }
 
+// We process clicks on checkers.
 function handlerActiveCourse() {
     const cells = [...wrapper.querySelectorAll(selectors.cell)];
+    const cellsBlack = cells.map(cell => {
+        if (!cell.classList.contains(classes.black)) {
+            cell = null
+        }
+        return cell
+    });
 
-    cells.forEach((cell, index) => {
-        cell.addEventListener('click', function() {
-            const figure = cell.querySelector(selectors.figure);
+    cellsBlack.forEach((cell, index) => {
+        if (cell) {
+            cell.addEventListener('click', function() {
+                const figure = cell.querySelector(selectors.figure);
 
-            if (figure && figure.dataset.type === nowTurn) {
-                removeClasses();
+                if (figure && figure.dataset.type === currentMove) {
+                    removeClasses();
 
-                activeCell = this;
-                getAvailableStrikeMoves(cells, activeCell, index);
-            }
-        });
+                    activeCell = this;
+                    getAvailableStrikeMoves(cellsBlack, activeCell, +cell.dataset.index);
+                }
+            });
+        }
     });
 }
 
 // We roll the checker into another cell.
-function handlerTransitionIntoCell() {
+function handlerMovesCheckers() {
     const cells = [...wrapper.querySelectorAll(selectors.cell)];
 
     wrapper.addEventListener('click', function(e) {
@@ -322,33 +365,42 @@ function handlerTransitionIntoCell() {
                 const captureFigure = captureCell.querySelector(selectors.figure);
 
                 if (captureFigure) {
-                    if (captureFigure.dataset.type !== nowTurn) captureFigure.remove();
+                    if (captureFigure.dataset.type !== currentMove) captureFigure.remove();
 
                     removeClasses();
                     getAvailableMoves(cells, cell, cellIndex, false);
 
-                    isCapture = cells.some(cell => cell.classList.contains(classes.focus));
-                    handlerCounter();
+                    isCapture = cells.some(cellFocus => cellFocus.classList.contains(classes.focus));
+                    chainTake = cell;
                 }
             });
 
             if (isCapture) {
-                nowTurn = figure.dataset.type;
+                currentMove = figure.dataset.type;
                 return
             }
 
-            nowTurn = figure.dataset.type === "black" ? "white" : "black";
+            chainTake = null;
+            currentMove = figure.dataset.type === "black" ? "white" : "black";
+
 
             cells.forEach((cell, index, arr) => getAvailableMoves(arr, cell, index, false));
         }
+
+        handlerCounter(cells);
     });
 }
 
+// If the checker is in the desired cell, we make a damka out of it.
 function handlerIsDamka(list) {
     const isPlacesWhite = ["1b", "1d", "1f", "1h"];
     const isPlacesBlack = ["8a", "8c", "8e", "8g"];
 
     list.forEach(cell => {
+        if (!cell) {
+            return
+        }
+
         const cellFigure = cell.querySelector(selectors.figure);
 
         if (isPlacesWhite.includes(cell.dataset.coordination) && cellFigure && cellFigure.dataset.type === "black") {
@@ -388,9 +440,13 @@ function handlerCounter() {
         finishBlock.innerHTML += "White";
     }
 
-    if (counterWhite === startFigures || counterBlack === startFigures) finishBlock.classList.add(classes.active);
+    // We add the is-active class for the block when all checkers are defeated in one of the sides.
+    if (counterWhite === startFigures || counterBlack === startFigures) {
+        finishBlock.classList.add(classes.active);
+    }
 }
 
+// We delete classes.
 function removeClasses() {
     wrapper.querySelectorAll(selectors.cell).forEach(cell => {
         cell.classList.remove(classes.active, classes.focus);

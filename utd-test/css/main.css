@@ -115,6 +115,7 @@ body.is-hidden {
     position: sticky;
     top: 16px;
     max-width: 130px;
+    margin-bottom: 20px;
     z-index: 1;
 }
 .container-checkers .checkers__counter-wrapper .cell {
