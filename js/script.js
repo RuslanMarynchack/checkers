@@ -286,7 +286,7 @@ function getAvailableStrikeMoves(list, activeCell, activeIndex) {
             }
         }
     });
-    console.log(captureAvailableList)
+
     if (captureAvailableList.length > 0) {
         captureAvailableList.forEach(cell => {
             if (cell === activeCell) getAvailableMoves(list, activeCell, activeIndex);
